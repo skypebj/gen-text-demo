@@ -1,0 +1,39 @@
+name: Daily TXT Generator
+
+on:
+  schedule:
+    # 北京时间7:30 = UTC 23:30（前一天）
+    - cron: '30 23 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Generate TXT file
+      run: |
+        python generate_txt.py
+        
+    - name: Commit and push
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add *.txt
+        # 如果有新文件则提交
+        git diff --staged --quiet || (git commit -m "Auto-generate daily TXT file $(date +%Y-%m-%d)" && git push)
