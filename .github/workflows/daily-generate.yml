@@ -1,4 +1,4 @@
-name: Daily TXT Generator
+name: Daily Morning Report Generator
 
 on:
   schedule:
@@ -14,26 +14,45 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
+    - name: Step 1 - Checkout repository
       uses: actions/checkout@v4
       
-    - name: Set up Python
+    - name: Step 2 - Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         
-    - name: Install dependencies
+    - name: Step 3 - Install dependencies
       run: |
+        echo "【步骤3】安装依赖项"
         pip install -r requirements.txt
+        echo "依赖安装完成"
         
-    - name: Generate TXT file
+    - name: Step 4 - Generate Morning Report
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+        OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
       run: |
+        echo "【步骤4】执行Python脚本"
         python generate_txt.py
         
-    - name: Commit and push
+    - name: Step 5 - Commit and push results
       run: |
+        echo "【步骤5】提交生成的文件"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add *.txt
         # 如果有新文件则提交
-        git diff --staged --quiet || (git commit -m "Auto-generate daily TXT file $(date +%Y-%m-%d)" && git push)
+        if git diff --staged --quiet; then
+          echo "没有新文件需要提交"
+        else
+          git commit -m "Auto-generate morning report $(date +%Y-%m-%d-%H%M%S)"
+          git push
+          echo "文件已提交到仓库"
+        fi
+        
+    - name: Step 6 - List generated files
+      run: |
+        echo "【步骤6】列出所有生成的文件"
+        ls -lh *.txt 2>/dev/null || echo "未找到txt文件"
