@@ -9,7 +9,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     permissions:
-      contents: write        # 允许自动提交文件
+      contents: write
 
     steps:
       - name: Checkout 仓库
@@ -35,6 +35,6 @@ jobs:
       - name: 自动提交并推送报告
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: '📄 添加每日早报 ${{ github.event.schedule || "manual" }}'
+          commit_message: '📄 添加每日早报 (${{ github.event_name }})'   # ← 这里已修复
           file_pattern: 'reports/*.txt'
           branch: ${{ github.ref_name }}
