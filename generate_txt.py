@@ -15,7 +15,6 @@ print("=" * 60)
 print("【步骤1】环境初始化")
 print("=" * 60)
 
-# 设置北京时间时区
 print("[INFO] 正在设置时区...")
 try:
     beijing_tz = pytz.timezone('Asia/Shanghai')
@@ -24,7 +23,6 @@ except Exception as e:
     print(f"[ERROR] 时区设置失败: {e}")
     sys.exit(1)
 
-# 获取当前北京时间
 print("[INFO] 正在获取当前北京时间...")
 now = datetime.now(beijing_tz)
 current_date = now.strftime("%Y%m%d")
@@ -73,6 +71,7 @@ print("【步骤3】构建提示词")
 print("=" * 60)
 
 PROMPT = """请为我整理一份早报，内容专业、客观、简洁，重点突出，结构清晰
+
 第一部分、投资金融领域
 要求内容专业、客观、简洁，重点突出，结构清晰，覆盖以下内容：
 全球宏观要闻：隔夜国际重要经济数据、央行政策动向、地缘政治对资本市场的影响。
@@ -84,6 +83,7 @@ A 股市场前瞻：昨日 A 股收盘总结、北向资金流向、龙虎榜要
 重要公告与监管动态：证监会、交易所、重要公司业绩预告 / 公告、退市与 IPO 相关信息。
 投资策略简要提示：当日市场情绪判断、风险点、值得跟踪的方向，不构成具体买卖建议。
 要求：逻辑清晰、数据准确、无冗余内容，适合长期投资者与趋势交易者阅读。
+
 第二部分、泛知识综合新闻
 内容覆盖广泛但不杂乱，重点选取有长期价值、认知增量的信息，包括：
 国内要闻：重要政策、产业趋势、科技进展、民生与社会热点。
@@ -115,20 +115,19 @@ except ImportError as e:
 
 print("[INFO] 正在初始化OpenAI客户端...")
 try:
-    # 使用环境变量方式初始化，避免 proxies 参数问题
+    # 方案：使用环境变量方式初始化，完全避免proxies参数问题
+    # 先设置环境变量
     os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
     if OPENAI_API_BASE:
         os.environ["OPENAI_BASE_URL"] = OPENAI_API_BASE
     
-    client = OpenAI()  # 从环境变量自动读取
+    # 无参数初始化，从环境变量读取
+    client = OpenAI()
     print(f"[SUCCESS] OpenAI客户端初始化成功")
     print(f"[INFO] API基础地址: {OPENAI_API_BASE or 'https://api.openai.com/v1'}")
 except Exception as e:
     print(f"[ERROR] OpenAI客户端初始化失败: {e}")
     sys.exit(1)
-
-
-
 
 print("[INFO] 正在发送API请求...")
 print(f"[INFO] 使用模型: {OPENAI_MODEL}")
