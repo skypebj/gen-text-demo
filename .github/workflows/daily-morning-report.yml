@@ -1,0 +1,40 @@
+name: 每日早报生成（北京时间 7:30）
+
+on:
+  schedule:
+    - cron: '30 23 * * *'     # UTC 23:30 = 北京时间次日 07:30
+  workflow_dispatch:          # 支持手动点击「Run workflow」测试
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # 允许自动提交文件
+
+    steps:
+      - name: Checkout 仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 设置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install openai
+
+      - name: 生成早报
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+        run: python generate_zaobao.py
+
+      - name: 自动提交并推送报告
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: '📄 添加每日早报 ${{ github.event.schedule || "manual" }}'
+          file_pattern: 'reports/*.txt'
+          branch: ${{ github.ref_name }}
