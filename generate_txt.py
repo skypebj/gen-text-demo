@@ -115,15 +115,20 @@ except ImportError as e:
 
 print("[INFO] 正在初始化OpenAI客户端...")
 try:
-    client = OpenAI(
-        api_key=OPENAI_API_KEY,
-        base_url=OPENAI_API_BASE
-    )
+    # 使用环境变量方式初始化，避免 proxies 参数问题
+    os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+    if OPENAI_API_BASE:
+        os.environ["OPENAI_BASE_URL"] = OPENAI_API_BASE
+    
+    client = OpenAI()  # 从环境变量自动读取
     print(f"[SUCCESS] OpenAI客户端初始化成功")
-    print(f"[INFO] API基础地址: {OPENAI_API_BASE}")
+    print(f"[INFO] API基础地址: {OPENAI_API_BASE or 'https://api.openai.com/v1'}")
 except Exception as e:
     print(f"[ERROR] OpenAI客户端初始化失败: {e}")
     sys.exit(1)
+
+
+
 
 print("[INFO] 正在发送API请求...")
 print(f"[INFO] 使用模型: {OPENAI_MODEL}")
