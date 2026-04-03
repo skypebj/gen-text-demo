@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from datetime import datetime, timezone, timedelta
 from openai import OpenAI
 
@@ -9,7 +10,7 @@ def log(step: int, message: str):
     print(f"[北京时间 {timestamp}] [STEP {step:02d}] {message}")
     sys.stdout.flush()
 
-log(1, "=== 开始执行每日早报生成脚本 ===")
+log(1, "=== 开始执行每日早报生成脚本（已加入连接重试机制） ===")
 
 # Step 1: 读取环境变量
 log(1, "读取系统环境变量 OPENAI_API_KEY / OPENAI_API_BASE / OPENAI_MODEL")
@@ -65,7 +66,7 @@ date_info = f"今天是北京时间 {beijing_now.strftime('%Y年%m月%d日 %H:%M
 
 log(2, f"✅ 模块准备完成，共 {len(modules)} 个模块（通用指令 + 日期说明已就绪）")
 
-# Step 3: 分模块调用 OpenAI API（每次只生成一个模块）
+# Step 3: 分模块调用 OpenAI API（每次只生成一个模块 + 重试机制）
 log(3, f"初始化 OpenAI 客户端并开始分模块调用模型 {model}")
 client = OpenAI(api_key=api_key, base_url=api_base)
 
@@ -84,19 +85,34 @@ for idx, mod in enumerate(modules, 1):
 
 **重要指令**：请严格只输出 **这个模块** 的完整内容，不要输出任何其他模块、其他部分、引言、结尾或额外说明。只输出模块标题和详细内容，必须严格满足“每一模块至少包含10个条目，每条目有标题和200字内容简介”的输出要求，内容专业、客观、详尽，不得压缩、简化或省略任何细节。"""
 
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": module_prompt}],
-            temperature=0.6,
-            max_tokens=8000,   # 单个模块专用较高 token 限制，确保不被压缩
-            top_p=0.95,
-        )
-        module_content = response.choices[0].message.content.strip()
-        module_contents.append({"mod": mod, "content": module_content})
-        log(3, f"✅ 模块 {idx} 生成成功，长度: {len(module_content)} 字符")
-    except Exception as e:
-        log(3, f"❌ 模块 {idx} 调用失败: {str(e)}")
+    success = False
+    for attempt in range(3):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": module_prompt}],
+                temperature=0.6,
+                max_tokens=100000,   # 进一步提升单个模块 token 上限，防止任何可能的截断
+                top_p=0.95,
+            )
+            module_content = response.choices[0].message.content.strip()
+            module_contents.append({"mod": mod, "content": module_content})
+            log(3, f"✅ 模块 {idx} 生成成功，长度: {len(module_content)} 字符")
+            success = True
+            break
+        except Exception as e:
+            error_msg = str(e)
+            log(3, f"⚠️ 模块 {idx} 调用失败 (尝试 {attempt+1}/3): {error_msg[:200]}...")
+            if attempt < 2:
+                wait_time = (2 ** attempt) * 15   # 15秒 → 30秒 → 60秒 指数退避
+                log(3, f"   等待 {wait_time} 秒后自动重试（连接/超时问题常见）...")
+                time.sleep(wait_time)
+            else:
+                log(3, f"❌ 模块 {idx} 已重试 3 次仍失败，脚本终止")
+                sys.exit(1)
+    
+    if not success:
+        # 理论上不会执行到这里
         sys.exit(1)
 
 # 所有模块生成完毕后，由程序自动整合
